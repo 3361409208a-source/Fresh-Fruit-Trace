@@ -98,7 +98,7 @@ export default function BatchCreate() {
         setCameraError('摄像头不可用：请使用 HTTPS 或 localhost 访问以启用摄像头权限。');
         return;
       }
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true });
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }, audio: true });
       setStream(s);
       if (videoRef.current) { videoRef.current.srcObject = s; videoRef.current.play(); }
       setCameraError('');

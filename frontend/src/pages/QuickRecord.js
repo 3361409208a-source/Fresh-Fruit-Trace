@@ -43,7 +43,7 @@ export default function QuickRecord() {
       setHasCam(false);
       return;
     }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: true })
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }, audio: true })
       .then(st => {
         s = st; setStream(st);
         if (videoRef.current) { videoRef.current.srcObject = st; videoRef.current.play(); }
@@ -82,19 +82,48 @@ export default function QuickRecord() {
       const tracks = stream ? stream.getTracks() : [];
       if (tracks.length > 0) {
         chunksRef.current = [];
-        const MIME_TYPES = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm', ''];
+        // iOS Safari only supports video/mp4 properly, but produces broken duration metadata
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const MIME_TYPES = isIOS ? ['video/mp4', ''] : ['video/webm;codecs=vp9', 'video/webm', 'video/mp4', ''];
         const mime = MIME_TYPES.find(t => t === '' || MediaRecorder.isTypeSupported(t));
+        console.log('[DEBUG] iOS:', isIOS, 'Selected MIME:', mime);
+
         let mr;
         try {
           const mrOpts = mime ? { mimeType: mime } : {};
           mr = new MediaRecorder(stream, mrOpts);
         } catch (e) {
+          console.log('[DEBUG] MediaRecorder init failed, trying without options:', e);
           mr = new MediaRecorder(stream);
         }
-        mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-        mr.onstop = () => { blobRef.current = new Blob(chunksRef.current, { type: mr.mimeType || 'video/mp4' }); };
-        mr.start(1000);
+
+        mr.ondataavailable = e => {
+          if (e.data.size > 0) {
+            chunksRef.current.push(e.data);
+            console.log('[DEBUG] dataavailable chunk size:', e.data.size);
+          }
+        };
+
+        // iOS: use Promise to wait for onstop
         mrRef.current = mr;
+        mrRef.current._stopPromise = new Promise(resolve => {
+          mr.onstop = () => {
+            const actualMime = mr.mimeType || 'video/mp4';
+            console.log('[DEBUG] onstop fired, chunks:', chunksRef.current.length, 'mimeType:', actualMime);
+
+            // For iOS, we need to create blob with correct type to fix duration metadata
+            blobRef.current = new Blob(chunksRef.current, { type: actualMime });
+            console.log('[DEBUG] Blob created, size:', blobRef.current.size, 'type:', blobRef.current.type);
+
+            // iOS fix: re-create blob with explicit mp4 type
+            if (isIOS && actualMime.includes('mp4')) {
+              blobRef.current = new Blob(chunksRef.current, { type: 'video/mp4' });
+              console.log('[DEBUG] iOS blob recreated, new size:', blobRef.current.size);
+            }
+            resolve();
+          };
+        });
+        mr.start(500); // 500ms 间隔，平衡延迟和实时性
       } else {
         mrRef.current = null;
         blobRef.current = null;
@@ -107,29 +136,41 @@ export default function QuickRecord() {
 
   // ── 停止并完成 ────────────────────────────────────────────────────────────
   const handleStop = useCallback(async () => {
-    setPhase(S.UPLOADING);
-    setUploadPct(0);
-
-    // 停止录制器（若存在）
+    // 停止录制器 - 先 requestData 再 stop，减少 iOS 延迟
     if (mrRef.current && mrRef.current.state !== 'inactive') {
+      try { mrRef.current.requestData(); } catch (e) {}
+      await new Promise(r => setTimeout(r, 100)); // 让数据写入
       mrRef.current.stop();
-      // 等待 onstop 回调写入 blobRef
-      await new Promise(r => setTimeout(r, 1500));
+      await mrRef.current._stopPromise;
+    }
+    // iOS: extra wait for blob to be ready
+    let wait = 0;
+    while (!blobRef.current && wait < 3000) {
+      await new Promise(r => setTimeout(r, 100));
+      wait += 100;
     }
 
-    await updateBatch(batchId, { status: 'done' });
+    // 先更新批次状态，立即显示二维码
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + shelfH * 3600;
+    await updateBatch(batchId, { status: 'done', expire_at: exp, production_time: now });
+    setExpireAt(exp);
+    setTraceUrl(`${window.location.origin}/trace/${batchId}`);
+    setPhase(S.DONE);
+    setUploadPct(0);
 
-    try {
-      if (blobRef.current && blobRef.current.size > 0) {
-        await uploadVideo(batchId, blobRef.current, setUploadPct);
-      }
-      const now = Math.floor(Date.now() / 1000);
-      const exp = now + shelfH * 3600;
-      await updateBatch(batchId, { expire_at: exp, production_time: now });
-      setExpireAt(exp);
-      setTraceUrl(`${window.location.origin}/trace/${batchId}`);
-      setPhase(S.DONE);
-    } catch (err) { setError('上传失败：' + err.message); setPhase(S.RECORDING); }
+    // 后台异步上传视频（不阻塞界面）
+    if (blobRef.current && blobRef.current.size > 0) {
+      uploadVideo(batchId, blobRef.current, setUploadPct)
+        .then(() => {
+          setUploadPct(100);
+          console.log('[DEBUG] Video upload complete for batch:', batchId);
+        })
+        .catch(err => {
+          console.error('[DEBUG] Video upload failed:', err);
+          setError('视频上传失败：' + err.message + '（可稍后重试）');
+        });
+    }
   }, [batchId, shelfH]);
 
   // ── 重置，准备下一个 ──────────────────────────────────────────────────────
@@ -192,16 +233,13 @@ export default function QuickRecord() {
           </div>
         )}
 
-        {/* 上传中遮罩 */}
-        {phase === S.UPLOADING && (
-          <div style={styles.uploadMask}>
-            <div style={styles.uploadSpinner} />
-            <div style={{ color: 'white', marginTop: 16, fontSize: 18, fontWeight: 700 }}>
-              上传中 {uploadPct}%
+        {/* 上传进度条（底部，DONE状态也显示后台上传进度） */}
+        {(phase === S.UPLOADING || (phase === S.DONE && uploadPct > 0 && uploadPct < 100)) && (
+          <div style={styles.uploadBarBottom}>
+            <div style={styles.uploadBarTrack}>
+              <div style={{ ...styles.uploadBarFill, width: `${uploadPct}%` }} />
             </div>
-            <div style={styles.progressBar}>
-              <div style={{ ...styles.progressFill, width: `${uploadPct}%` }} />
-            </div>
+            <span style={styles.uploadBarText}>{uploadPct < 100 ? `上传中 ${uploadPct}%` : '上传完成'}</span>
           </div>
         )}
       </div>
@@ -242,13 +280,7 @@ export default function QuickRecord() {
           </button>
         )}
 
-        {/* UPLOADING：禁用状态 */}
-        {phase === S.UPLOADING && (
-          <button style={{ ...styles.bigGray }} disabled>
-            <span style={{ fontSize: 32 }}>⏳</span>
-            正在保存...
-          </button>
-        )}
+        {/* UPLOADING：后台上传中，不阻塞界面 */}
 
         {/* DONE：显示二维码 + 打印 + 下一个 */}
         {phase === S.DONE && (
@@ -399,16 +431,14 @@ const styles = {
     display: 'inline-block', animation: 'pulse 1s infinite',
   },
   recTime: { color: 'white', fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
-  uploadMask: {
-    position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.8)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+  uploadBarBottom: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+    padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12,
   },
-  uploadSpinner: {
-    width: 48, height: 48, border: '4px solid rgba(255,255,255,0.2)',
-    borderTopColor: '#22c55e', borderRadius: '50%', animation: 'spin 1s linear infinite',
-  },
-  progressBar: { width: 220, height: 8, background: 'rgba(255,255,255,0.15)', borderRadius: 20, marginTop: 14, overflow: 'hidden' },
-  progressFill: { height: '100%', background: '#22c55e', borderRadius: 20, transition: 'width 0.3s' },
+  uploadBarTrack: { flex: 1, height: 6, background: 'rgba(255,255,255,0.2)', borderRadius: 10, overflow: 'hidden' },
+  uploadBarFill: { height: '100%', background: '#22c55e', borderRadius: 10, transition: 'width 0.3s' },
+  uploadBarText: { color: 'white', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' },
 
   controls: {
     background: '#1a1d27', padding: '20px 20px 28px',

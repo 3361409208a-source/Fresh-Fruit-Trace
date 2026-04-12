@@ -149,15 +149,34 @@ router.put('/:id', (req, res) => {
 // 上传视频
 router.post('/:id/video', upload.single('video'), (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: '未收到视频文件' });
+    console.log('[DEBUG] Upload attempt for batch:', req.params.id);
+    console.log('[DEBUG] req.file:', req.file);
+    console.log('[DEBUG] req.body:', req.body);
+
+    if (!req.file) {
+      console.log('[DEBUG] No file received!');
+      return res.status(400).json({ success: false, message: '未收到视频文件' });
+    }
+
+    console.log('[DEBUG] File received - size:', req.file.size, 'mimetype:', req.file.mimetype, 'originalname:', req.file.originalname);
+
     const batch = store.getBatchById(req.params.id);
-    if (!batch) return res.status(404).json({ success: false, message: '批次不存在' });
+    if (!batch) {
+      console.log('[DEBUG] Batch not found:', req.params.id);
+      return res.status(404).json({ success: false, message: '批次不存在' });
+    }
+
+    // Check actual file on disk
+    const fs = require('fs');
+    const stats = fs.statSync(req.file.path);
+    console.log('[DEBUG] Disk file size:', stats.size, 'bytes');
 
     const videoUrl = `/uploads/${req.file.filename}`;
     store.upsertBatch({ ...batch, video_path: req.file.path, video_url: videoUrl });
     store.addEvent(req.params.id, 'video_uploaded', `视频已上传：${req.file.filename}`);
-    res.json({ success: true, video_url: videoUrl, filename: req.file.filename });
+    res.json({ success: true, video_url: videoUrl, filename: req.file.filename, size: req.file.size });
   } catch (err) {
+    console.error('[DEBUG] Upload error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

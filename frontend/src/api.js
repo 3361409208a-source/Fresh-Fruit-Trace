@@ -35,7 +35,7 @@ export const uploadVideo = (batchId, blob, onProgress) => {
   formData.append('video', blob, `recording${ext}`);
   return api.post(`/batches/${batchId}/video`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 300000,
+    timeout: 600000,  // 10 minutes for iOS large uploads
     onUploadProgress: (e) => {
       if (onProgress) onProgress(Math.round((e.loaded * 100) / e.total));
     },
