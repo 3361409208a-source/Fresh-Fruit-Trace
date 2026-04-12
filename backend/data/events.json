@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1776000227715.0457,
+    "batch_id": "e419b7b1-f1e8-49ae-a3bc-98c324e1784a",
+    "event_type": "created",
+    "description": "批次创建：鲜切水果 - 操作员：哈哈哈",
+    "occurred_at": 1776000227
+  },
+  {
+    "id": 1776000229231.9775,
+    "batch_id": "e419b7b1-f1e8-49ae-a3bc-98c324e1784a",
+    "event_type": "recording_started",
+    "description": "开始录制生产过程",
+    "occurred_at": 1776000229
+  },
+  {
+    "id": 1776000235492.7815,
+    "batch_id": "e419b7b1-f1e8-49ae-a3bc-98c324e1784a",
+    "event_type": "production_done",
+    "description": "生产完成，停止录制",
+    "occurred_at": 1776000235
+  },
+  {
+    "id": 1776000279162.7068,
+    "batch_id": "e419b7b1-f1e8-49ae-a3bc-98c324e1784a",
+    "event_type": "label_printed",
+    "description": "标签已打印",
+    "occurred_at": 1776000279
+  }
+]

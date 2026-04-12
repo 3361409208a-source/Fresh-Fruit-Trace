@@ -1,0 +1,19 @@
+[
+  {
+    "id": "e419b7b1-f1e8-49ae-a3bc-98c324e1784a",
+    "product_name": "鲜切水果",
+    "product_type_id": null,
+    "operator": "哈哈哈",
+    "weight": null,
+    "spec": "",
+    "notes": "",
+    "status": "printed",
+    "started_at": 1776000229,
+    "ended_at": 1776000235,
+    "production_time": 1776000235,
+    "expire_at": null,
+    "video_path": null,
+    "video_url": null,
+    "created_at": 1776000227
+  }
+]
