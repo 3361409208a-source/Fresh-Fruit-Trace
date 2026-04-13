@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { PlusCircle, PlayCircle, CheckCircle, Printer, Package, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { getTodayStats, getBatches } from '../api';
 import type { Batch, TodayStats, StatusConfig } from '../types';
+import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 
 const statusConfig: Record<string, StatusConfig> = {
   preparing: { label: '准备中', color: '#f59e0b', bg: '#fef3c7' },
@@ -21,18 +24,15 @@ interface StatCardProps {
 
 function StatCard({ icon: Icon, label, value, color, bg }: StatCardProps) {
   return (
-    <div style={{
-      background: 'white', borderRadius: 16, padding: '20px 24px',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 16
-    }}>
-      <div style={{ background: bg, borderRadius: 12, padding: 12, display: 'flex' }}>
-        <Icon size={24} color={color} />
+    <Card className="flex items-center gap-4 p-5">
+      <div className="rounded-2xl p-3.5 flex shrink-0" style={{ background: bg }}>
+        <Icon size={26} style={{ color }} />
       </div>
       <div>
-        <div style={{ fontSize: 28, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{value ?? 0}</div>
-        <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{label}</div>
+        <div className="text-3xl font-extrabold text-foreground leading-none tracking-tight">{value ?? 0}</div>
+        <div className="text-xs text-muted-foreground mt-1.5 font-medium">{label}</div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -45,31 +45,23 @@ function BatchRow({ batch, onClick }: BatchRowProps) {
   const cfg = statusConfig[batch.status] || statusConfig.preparing;
   const time = batch.created_at ? new Date(batch.created_at * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '--';
   const isExpired = batch.expire_at ? batch.expire_at < Math.floor(Date.now() / 1000) : false;
+  const variant = batch.status === 'preparing' ? 'warning' : batch.status === 'recording' ? 'destructive' : batch.status === 'printed' ? 'success' : 'secondary';
 
   return (
-    <div onClick={() => onClick(batch.id)} style={{
-      display: 'flex', alignItems: 'center', padding: '14px 20px',
-      borderBottom: '1px solid #f3f4f6', cursor: 'pointer', transition: 'background 0.1s',
-    }}
-      onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-    >
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, fontSize: 15, color: '#111827' }}>{batch.product_name}</div>
-        <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+    <div onClick={() => onClick(batch.id)} className="flex items-center px-5 py-3.5 border-b border-border cursor-pointer hover:bg-secondary/50 transition-colors">
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm text-foreground">{batch.product_name}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">
           {batch.operator} · {batch.weight ? `${batch.weight}g` : '未称重'} · {time}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="flex items-center gap-3">
         {isExpired && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ef4444', fontSize: 12 }}>
+          <div className="flex items-center gap-1 text-destructive text-xs">
             <AlertCircle size={14} /> 已过期
           </div>
         )}
-        <span style={{
-          background: cfg.bg, color: cfg.color,
-          padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500
-        }}>{cfg.label}</span>
+        <Badge variant={variant}>{cfg.label}</Badge>
       </div>
     </div>
   );
@@ -94,59 +86,53 @@ export default function Dashboard() {
   const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
   return (
-    <div style={{ padding: '32px 32px', maxWidth: 1100, animation: 'fadeIn 0.3s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+    <div className="p-8 max-w-[1100px]">
+      <div className="flex justify-between items-start mb-7 pb-6 border-b border-border">
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#111827' }}>生产控制台</h1>
-          <div style={{ color: '#6b7280', fontSize: 14, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">生产控制台</h1>
+          <div className="text-sm text-muted-foreground mt-1.5 flex items-center gap-1.5">
             <Clock size={14} /> {today}
           </div>
         </div>
-        <button onClick={() => navigate('/batches/new')} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: 'linear-gradient(135deg, #16a34a, #22c55e)',
-          color: 'white', border: 'none', borderRadius: 12, padding: '12px 22px',
-          fontWeight: 600, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 12px rgba(22,163,74,0.3)'
-        }}>
+        <Button onClick={() => navigate('/batches/new')} size="lg" className="gap-2 shadow-lg shadow-primary/20">
           <PlusCircle size={18} /> 开始新批次
-        </button>
+        </Button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 60, color: '#9ca3af' }}>
-          <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid #e5e7eb', borderTopColor: '#16a34a', borderRadius: '50%', margin: '0 auto 12px' }} />
+        <div className="text-center py-16 text-muted-foreground">
+          <div className="w-8 h-8 border-2 border-muted border-t-primary rounded-full animate-spin mx-auto mb-3" />
           加载中...
         </div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
-            <StatCard icon={Package} label="今日总批次" value={stats?.total} color="#16a34a" bg="#dcfce7" />
-            <StatCard icon={PlayCircle} label="录制中" value={stats?.recording} color="#ef4444" bg="#fee2e2" />
-            <StatCard icon={CheckCircle} label="已完成" value={stats?.completed} color="#3b82f6" bg="#dbeafe" />
-            <StatCard icon={Printer} label="已打印标签" value={stats?.printed} color="#8b5cf6" bg="#ede9fe" />
-            <StatCard icon={TrendingUp} label="总重量(g)" value={stats?.total_weight ? Math.round(stats.total_weight) : 0} color="#f59e0b" bg="#fef3c7" />
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-8">
+            <StatCard icon={Package} label="今日总批次" value={stats?.total} color="#1d1d1f" bg="#f5f5f7" />
+            <StatCard icon={PlayCircle} label="录制中" value={stats?.recording} color="#ff3b30" bg="#fff1f0" />
+            <StatCard icon={CheckCircle} label="已完成" value={stats?.completed} color="#34c759" bg="#f0fff4" />
+            <StatCard icon={Printer} label="已打印标签" value={stats?.printed} color="#1d1d1f" bg="#f5f5f7" />
+            <StatCard icon={TrendingUp} label="总重量(g)" value={stats?.total_weight ? Math.round(stats.total_weight) : 0} color="#1d1d1f" bg="#f5f5f7" />
           </div>
 
-          <div style={{ background: 'white', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontWeight: 600, fontSize: 16, color: '#111827' }}>最近批次</div>
-              <button onClick={() => navigate('/batches')} style={{ color: '#16a34a', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+          <Card className="overflow-hidden">
+            <div className="px-5 py-4 border-b border-border flex justify-between items-center">
+              <div className="font-semibold text-base text-foreground">最近批次</div>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/batches')} className="text-primary">
                 查看全部 →
-              </button>
+              </Button>
             </div>
             {recentBatches.length === 0 ? (
-              <div style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>
-                <Package size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+              <div className="py-12 text-center text-muted-foreground">
+                <Package size={40} className="mx-auto mb-3 opacity-30" />
                 <div>暂无批次记录</div>
-                <button onClick={() => navigate('/batches/new')} style={{
-                  marginTop: 16, background: '#16a34a', color: 'white', border: 'none',
-                  borderRadius: 8, padding: '8px 18px', cursor: 'pointer', fontSize: 13
-                }}>开始第一个批次</button>
+                <Button variant="default" size="sm" onClick={() => navigate('/batches/new')} className="mt-4">
+                  开始第一个批次
+                </Button>
               </div>
             ) : (
               recentBatches.map(b => <BatchRow key={b.id} batch={b} onClick={(id) => navigate(`/batches/${id}`)} />)
             )}
-          </div>
+          </Card>
         </>
       )}
     </div>

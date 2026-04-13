@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { CheckCircle, AlertCircle, Clock, Video, Package, Leaf, Activity, Play, MapPin } from 'lucide-react';
 import { getTrace, API_BASE_URL } from '../api';
 import type { TraceData } from '../types';
+import { Card } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 
 interface EventLabelCfg {
   label: string;
@@ -33,11 +35,11 @@ function CountdownTimer({ expireAt }: { expireAt: number }) {
   }, [expireAt, isExpired]);
 
   if (isExpired) return (
-    <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', borderRadius: 14, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-      <AlertCircle size={24} color="#dc2626" />
+    <div className="bg-destructive/5 border border-destructive/20 rounded-xl px-5 py-4 flex items-center gap-3">
+      <AlertCircle size={24} className="text-destructive" />
       <div>
-        <div style={{ fontWeight: 700, fontSize: 16, color: '#dc2626' }}>已超过有效期</div>
-        <div style={{ fontSize: 13, color: '#f87171', marginTop: 2 }}>该产品已不在保质期内，请谨慎食用</div>
+        <div className="font-bold text-base text-destructive">已超过有效期</div>
+        <div className="text-xs text-red-400 mt-0.5">该产品已不在保质期内，请谨慎食用</div>
       </div>
     </div>
   );
@@ -50,20 +52,20 @@ function CountdownTimer({ expireAt }: { expireAt: number }) {
   const isWarning = remaining < 6 * 3600;
 
   return (
-    <div style={{ background: isWarning ? '#fffbeb' : '#f0fdf4', border: `1.5px solid ${isWarning ? '#fcd34d' : '#bbf7d0'}`, borderRadius: 14, padding: '16px 20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <Clock size={18} color={isWarning ? '#d97706' : '#16a34a'} />
-        <span style={{ fontWeight: 600, fontSize: 15, color: isWarning ? '#92400e' : '#15803d' }}>
+    <div className={`rounded-xl px-5 py-4 ${isWarning ? 'bg-amber-50 border border-amber-200' : 'bg-primary/5 border border-primary/20'}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <Clock size={18} className={isWarning ? 'text-amber-600' : 'text-primary'} />
+        <span className={`font-semibold text-sm ${isWarning ? 'text-amber-800' : 'text-primary'}`}>
           {isWarning ? '⚠️ 即将到期' : '✅ 在有效期内'}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
+      <div className="flex gap-2.5">
         {days > 0 && <TimePart value={days} label="天" warn={isWarning} />}
         <TimePart value={hours} label="时" warn={isWarning} />
         <TimePart value={minutes} label="分" warn={isWarning} />
         <TimePart value={seconds} label="秒" warn={isWarning} />
       </div>
-      <div style={{ fontSize: 12, color: isWarning ? '#b45309' : '#6b7280', marginTop: 10 }}>
+      <div className={`text-xs mt-2.5 ${isWarning ? 'text-amber-700' : 'text-muted-foreground'}`}>
         有效期至：{new Date(expireAt * 1000).toLocaleString('zh-CN')}
       </div>
     </div>
@@ -72,14 +74,11 @@ function CountdownTimer({ expireAt }: { expireAt: number }) {
 
 function TimePart({ value, label, warn }: { value: number; label: string; warn: boolean }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{
-        background: warn ? '#fef3c7' : '#dcfce7', borderRadius: 8, padding: '6px 10px',
-        fontSize: 22, fontWeight: 700, color: warn ? '#92400e' : '#15803d', minWidth: 44
-      }}>
+    <div className="text-center">
+      <div className={`rounded-lg px-2.5 py-1.5 text-xl font-bold min-w-[44px] ${warn ? 'bg-amber-100 text-amber-800' : 'bg-primary/10 text-primary'}`}>
         {String(value).padStart(2, '0')}
       </div>
-      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{label}</div>
+      <div className="text-[11px] text-muted-foreground mt-0.5">{label}</div>
     </div>
   );
 }
@@ -100,22 +99,22 @@ export default function PublicTrace() {
   }, [id]);
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14 }}>
-      <div style={{ background: '#16a34a', borderRadius: 16, padding: 16, display: 'flex' }}>
-        <Leaf size={28} color="white" />
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-primary/10 flex items-center justify-center flex-col gap-3.5">
+      <div className="bg-primary rounded-2xl p-4 flex">
+        <Leaf size={28} className="text-primary-foreground" />
       </div>
-      <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid #e5e7eb', borderTopColor: '#16a34a', borderRadius: '50%' }} />
-      <div style={{ color: '#6b7280' }}>加载产品信息...</div>
+      <div className="w-8 h-8 border-2 border-muted border-t-primary rounded-full animate-spin" />
+      <div className="text-muted-foreground">加载产品信息...</div>
     </div>
   );
 
   if (error) return (
-    <div style={{ minHeight: '100vh', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ background: 'white', borderRadius: 20, padding: 32, maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-        <AlertCircle size={48} color="#ef4444" style={{ margin: '0 auto 16px' }} />
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 8 }}>未找到产品信息</h2>
-        <p style={{ color: '#6b7280', fontSize: 14 }}>{error}</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-primary/10 flex items-center justify-center p-5">
+      <Card className="p-8 max-w-[400px] w-full text-center shadow-lg">
+        <AlertCircle size={48} className="text-destructive mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-foreground mb-2">未找到产品信息</h2>
+        <p className="text-sm text-muted-foreground">{error}</p>
+      </Card>
     </div>
   );
 
@@ -123,41 +122,41 @@ export default function PublicTrace() {
   const prodTime = data.production_time ? new Date(data.production_time * 1000).toLocaleString('zh-CN') : new Date(data.created_at * 1000).toLocaleString('zh-CN');
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%)', fontFamily: 'Inter, sans-serif' }}>
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-primary/10">
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #14532d, #16a34a)', padding: '20px 20px 40px', textAlign: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
-          <div style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 10, padding: 8 }}>
-            <Leaf size={20} color="white" />
+      <div className="bg-gradient-to-br from-primary/90 to-primary px-5 pb-10 pt-5 text-center">
+        <div className="flex items-center justify-center gap-2.5 mb-2">
+          <div className="bg-white/20 rounded-xl p-2">
+            <Leaf size={20} className="text-white" />
           </div>
-          <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13 }}>鲜切水果追溯系统</span>
+          <span className="text-white/85 text-xs">鲜切水果追溯系统</span>
         </div>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: 'white', margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+        <h1 className="text-3xl font-extrabold text-white m-0 drop-shadow-lg">
           {data.product_name}
         </h1>
-        {data.spec && <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15, marginTop: 6 }}>{data.spec}</div>}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: data.is_expired ? '#ef4444' : '#22c55e', borderRadius: 20, padding: '5px 14px', marginTop: 12 }}>
-          {data.is_expired ? <AlertCircle size={14} color="white" /> : <CheckCircle size={14} color="white" />}
-          <span style={{ color: 'white', fontSize: 13, fontWeight: 600 }}>{data.is_expired ? '已过有效期' : '新鲜在售'}</span>
-        </div>
+        {data.spec && <div className="text-white/80 text-sm mt-1.5">{data.spec}</div>}
+        <Badge variant={data.is_expired ? 'destructive' : 'success'} className="mt-3 gap-1.5">
+          {data.is_expired ? <AlertCircle size={14} /> : <CheckCircle size={14} />}
+          {data.is_expired ? '已过有效期' : '新鲜在售'}
+        </Badge>
       </div>
 
-      <div style={{ maxWidth: 520, margin: '0 auto', padding: '0 16px 40px' }}>
+      <div className="max-w-[520px] mx-auto px-4 pb-10">
         {/* 有效期倒计时 */}
-        <div style={{ transform: 'translateY(-20px)', marginBottom: -4 }}>
+        <div className="-translate-y-5 mb-[-4px]">
           {data.expire_at ? (
             <CountdownTimer expireAt={data.expire_at} />
           ) : (
-            <div style={{ background: 'white', borderRadius: 14, padding: '14px 20px', border: '1px solid #e5e7eb', color: '#9ca3af', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Card className="px-5 py-3.5 flex items-center gap-2 text-muted-foreground text-sm">
               <Clock size={16} /> 未设置有效期
-            </div>
+            </Card>
           )}
         </div>
 
         {/* 产品详情 */}
-        <div style={cardStyle}>
+        <Card className="p-5 mb-3.5">
           <SectionTitle icon={Package} title="产品信息" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div className="grid grid-cols-2 gap-3.5">
             <DetailItem label="产品名称" value={data.product_name} />
             <DetailItem label="操作员" value={data.operator} />
             {data.weight && <DetailItem label="重量" value={`${data.weight}g`} />}
@@ -166,24 +165,24 @@ export default function PublicTrace() {
             {data.expire_at && <DetailItem label="有效期至" value={new Date(data.expire_at * 1000).toLocaleString('zh-CN')} span highlight={data.is_expired} />}
           </div>
           {data.notes && (
-            <div style={{ marginTop: 14, background: '#f9fafb', borderRadius: 10, padding: '10px 14px' }}>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>备注</div>
-              <div style={{ fontSize: 14, color: '#374151' }}>{data.notes}</div>
+            <div className="mt-3.5 bg-secondary/50 rounded-lg p-3">
+              <div className="text-xs text-muted-foreground mb-1">备注</div>
+              <div className="text-sm text-foreground">{data.notes}</div>
             </div>
           )}
-        </div>
+        </Card>
 
         {/* 生产位置 */}
         {data.location_name && (
-          <div style={cardStyle}>
+          <Card className="p-5 mb-3.5">
             <SectionTitle icon={MapPin} title="生产地点" />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <MapPin size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-start gap-2.5">
+                <MapPin size={18} className="text-primary shrink-0 mt-0.5" />
                 <div>
-                  <div style={{ fontSize: 14, color: '#111827', fontWeight: 600 }}>{data.location_name}</div>
+                  <div className="text-sm text-foreground font-semibold">{data.location_name}</div>
                   {data.latitude != null && data.longitude != null && (
-                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+                    <div className="text-xs text-muted-foreground mt-0.5">
                       {data.latitude.toFixed(6)}, {data.longitude.toFixed(6)}
                     </div>
                   )}
@@ -194,55 +193,51 @@ export default function PublicTrace() {
                   title="生产地点地图"
                   width="100%"
                   height="200"
-                  style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}
+                  className="rounded-xl border border-border"
                   src={`https://www.openstreetmap.org/export/embed.html?bbox=${data.longitude-0.005},${data.latitude-0.003},${data.longitude+0.005},${data.latitude+0.003}&layer=mapnik&marker=${data.latitude},${data.longitude}`}
                 />
               )}
             </div>
-          </div>
+          </Card>
         )}
 
         {/* 生产视频 */}
         {data.video_url && (
-          <div style={cardStyle}>
+          <Card className="p-5 mb-3.5">
             <SectionTitle icon={Video} title="生产过程视频" />
             {!videoVisible ? (
-              <div onClick={() => setVideoVisible(true)} style={{
-                background: 'linear-gradient(135deg, #1a1a2e, #16213e)', borderRadius: 12, aspectRatio: '16/9',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', gap: 12, transition: 'opacity 0.2s'
-              }}>
-                <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: '50%', width: 60, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
-                  <Play size={26} color="white" style={{ marginLeft: 3 }} />
+              <div onClick={() => setVideoVisible(true)} className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl aspect-video flex flex-col items-center justify-center cursor-pointer gap-3 transition-opacity hover:opacity-90">
+                <div className="bg-white/15 rounded-full w-16 h-16 flex items-center justify-center backdrop-blur-sm">
+                  <Play size={26} className="text-white ml-0.5" />
                 </div>
-                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14 }}>点击播放生产过程视频</div>
+                <div className="text-white/80 text-sm">点击播放生产过程视频</div>
               </div>
             ) : (
-              <video controls autoPlay style={{ width: '100%', borderRadius: 12, maxHeight: 280, background: '#000' }}
+              <video controls autoPlay className="w-full rounded-xl max-h-[280px] bg-black"
                 src={`${API_BASE_URL}${data.video_url}`} />
             )}
-            <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 8, textAlign: 'center' }}>
+            <div className="text-xs text-muted-foreground mt-2 text-center">
               本视频记录了完整的切割和打包过程，保证食品安全可追溯
             </div>
-          </div>
+          </Card>
         )}
 
         {/* 溯源时间轴 */}
         {data.events && data.events.length > 0 && (
-          <div style={cardStyle}>
+          <Card className="p-5 mb-3.5">
             <SectionTitle icon={Activity} title="生产追溯记录" />
-            <div style={{ position: 'relative', paddingLeft: 16 }}>
-              <div style={{ position: 'absolute', left: 15, top: 8, bottom: 8, width: 2, background: '#f0fdf4' }} />
+            <div className="relative pl-4">
+              <div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-primary/10" />
               {data.events.map((ev, i) => {
                 const cfg = eventLabels[ev.event_type] || { label: ev.event_type, color: '#6b7280', dot: '#e5e7eb' };
                 const isLast = i === data.events.length - 1;
                 return (
-                  <div key={i} style={{ display: 'flex', gap: 14, marginBottom: isLast ? 0 : 16, position: 'relative' }}>
-                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: cfg.dot, border: `3px solid ${cfg.color}`, flexShrink: 0, zIndex: 1, marginTop: 3 }} />
+                  <div key={i} className={`flex gap-3.5 ${isLast ? '' : 'mb-4'} relative`}>
+                    <div className="w-3.5 h-3.5 rounded-full shrink-0 z-[1] mt-0.5" style={{ background: cfg.dot, border: `3px solid ${cfg.color}` }} />
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>{cfg.label}</div>
-                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{ev.description}</div>
-                      <div style={{ fontSize: 11, color: '#d1d5db', marginTop: 2 }}>
+                      <div className="font-semibold text-sm text-foreground">{cfg.label}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{ev.description}</div>
+                      <div className="text-[11px] text-muted-foreground/60 mt-0.5">
                         {new Date(ev.occurred_at * 1000).toLocaleString('zh-CN')}
                       </div>
                     </div>
@@ -250,14 +245,14 @@ export default function PublicTrace() {
                 );
               })}
             </div>
-          </div>
+          </Card>
         )}
 
         {/* 底部品牌 */}
-        <div style={{ textAlign: 'center', padding: '20px 0', color: '#9ca3af', fontSize: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-            <Leaf size={14} color="#22c55e" />
-            <span style={{ color: '#22c55e', fontWeight: 600 }}>鲜切水果追溯系统</span>
+        <div className="text-center py-5 text-muted-foreground text-xs">
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <Leaf size={14} className="text-primary" />
+            <span className="text-primary font-semibold">鲜切水果追溯系统</span>
           </div>
           全程可追溯 · 新鲜有保障
         </div>
@@ -268,8 +263,8 @@ export default function PublicTrace() {
 
 function SectionTitle({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontWeight: 700, fontSize: 15, color: '#111827' }}>
-      <Icon size={18} color="#16a34a" />
+    <div className="flex items-center gap-2 mb-4 font-bold text-sm text-foreground">
+      <Icon size={18} className="text-primary" />
       {title}
     </div>
   );
@@ -277,14 +272,9 @@ function SectionTitle({ icon: Icon, title }: { icon: React.ElementType; title: s
 
 function DetailItem({ label, value, span, highlight }: { label: string; value: string; span?: boolean; highlight?: boolean }) {
   return (
-    <div style={{ gridColumn: span ? '1 / -1' : 'auto' }}>
-      <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: 600, color: highlight ? '#dc2626' : '#111827' }}>{value}</div>
+    <div className={span ? 'col-span-2' : ''}>
+      <div className="text-[11px] text-muted-foreground mb-0.5">{label}</div>
+      <div className={`text-sm font-semibold ${highlight ? 'text-destructive' : 'text-foreground'}`}>{value}</div>
     </div>
   );
 }
-
-const cardStyle: React.CSSProperties = {
-  background: 'white', borderRadius: 16, padding: '20px', marginBottom: 14,
-  boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
-};

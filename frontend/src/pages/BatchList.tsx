@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Search, PlusCircle, Eye, Trash2, Printer, Package, AlertCircle, RefreshCw } from 'lucide-react';
 import { getBatches, deleteBatch } from '../api';
 import type { Batch, StatusConfig } from '../types';
+import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 
 const statusConfig: Record<string, StatusConfig> = {
   preparing: { label: '准备中', color: '#d97706', bg: '#fef3c7', dot: '#f59e0b' },
@@ -48,34 +51,36 @@ export default function BatchList() {
   const totalPages = Math.ceil(total / limit);
   const now = Math.floor(Date.now() / 1000);
 
+  const statusVariant = (s: string) => s === 'preparing' ? 'warning' : s === 'recording' ? 'destructive' : s === 'printed' ? 'success' : 'secondary';
+
   return (
-    <div style={{ padding: '32px', maxWidth: 1100 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div className="p-8 max-w-[1100px]">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111827' }}>批次管理</h1>
-          <p style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>共 {total} 条记录</p>
+          <h1 className="text-2xl font-bold text-foreground">批次管理</h1>
+          <p className="text-sm text-muted-foreground mt-1">共 {total} 条记录</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={load} style={iconBtnStyle}><RefreshCw size={16} /></button>
-          <button onClick={() => navigate('/batches/new')} style={primaryBtnStyle}>
+        <div className="flex gap-2.5">
+          <Button variant="outline" size="icon" onClick={load}><RefreshCw size={16} /></Button>
+          <Button onClick={() => navigate('/batches/new')} className="gap-2">
             <PlusCircle size={16} /> 新建批次
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* 筛选栏 */}
-      <div style={{ background: 'white', borderRadius: 14, padding: '16px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+      <Card className="px-5 py-4 mb-4 flex gap-3 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             placeholder="搜索产品名称..."
             value={filters.product_name}
             onChange={e => { setFilters(f => ({ ...f, product_name: e.target.value })); setPage(1); }}
-            style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none' }}
+            className="w-full pl-9 pr-3 py-2 border border-input rounded-lg text-sm bg-background outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
         <select value={filters.status} onChange={e => { setFilters(f => ({ ...f, status: e.target.value })); setPage(1); }}
-          style={{ padding: '9px 14px', border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', color: '#374151' }}>
+          className="px-3.5 py-2 border border-input rounded-lg text-sm bg-background outline-none text-foreground">
           <option value="">全部状态</option>
           <option value="preparing">准备中</option>
           <option value="recording">录制中</option>
@@ -83,35 +88,34 @@ export default function BatchList() {
           <option value="printed">已打印</option>
         </select>
         <input type="date" value={filters.date} onChange={e => { setFilters(f => ({ ...f, date: e.target.value })); setPage(1); }}
-          style={{ padding: '9px 14px', border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 14, outline: 'none', color: '#374151' }} />
+          className="px-3.5 py-2 border border-input rounded-lg text-sm bg-background outline-none text-foreground" />
         {(filters.product_name || filters.status || filters.date) && (
-          <button onClick={() => { setFilters({ product_name: '', status: '', date: '' }); setPage(1); }}
-            style={{ padding: '9px 14px', border: '1.5px solid #e5e7eb', borderRadius: 10, fontSize: 13, cursor: 'pointer', color: '#6b7280', background: 'white' }}>
+          <Button variant="outline" size="sm" onClick={() => { setFilters({ product_name: '', status: '', date: '' }); setPage(1); }}>
             清除筛选
-          </button>
+          </Button>
         )}
-      </div>
+      </Card>
 
       {/* 表格 */}
-      <div style={{ background: 'white', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+              <tr className="bg-secondary/50 border-b border-border">
                 {['批次号', '产品名称', '操作员', '重量', '生产时间', '有效期', '状态', '操作'].map(h => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>
-                  <div className="animate-spin" style={{ width: 28, height: 28, border: '3px solid #e5e7eb', borderTopColor: '#16a34a', borderRadius: '50%', margin: '0 auto 10px' }} />
+                <tr><td colSpan={8} className="py-12 text-center text-muted-foreground">
+                  <div className="w-7 h-7 border-2 border-muted border-t-primary rounded-full animate-spin mx-auto mb-2.5" />
                   加载中...
                 </td></tr>
               ) : batches.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>
-                  <Package size={36} style={{ margin: '0 auto 10px', opacity: 0.3 }} />
+                <tr><td colSpan={8} className="py-12 text-center text-muted-foreground">
+                  <Package size={36} className="mx-auto mb-2.5 opacity-30" />
                   <div>暂无批次记录</div>
                 </td></tr>
               ) : (
@@ -121,36 +125,31 @@ export default function BatchList() {
                   const prodTime = batch.production_time ? new Date(batch.production_time * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '--';
                   const expTime = batch.expire_at ? new Date(batch.expire_at * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '--';
                   return (
-                    <tr key={batch.id} style={{ borderBottom: '1px solid #f9fafb' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <td style={{ padding: '14px 16px', fontSize: 12, color: '#9ca3af', fontFamily: 'monospace' }}>{batch.id.slice(0, 8)}...</td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <div style={{ fontWeight: 600, color: '#111827', fontSize: 14 }}>{batch.product_name}</div>
-                        {batch.spec && <div style={{ fontSize: 12, color: '#9ca3af' }}>{batch.spec}</div>}
+                    <tr key={batch.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground font-mono">{batch.id.slice(0, 8)}...</td>
+                      <td className="px-4 py-3.5">
+                        <div className="font-semibold text-sm text-foreground">{batch.product_name}</div>
+                        {batch.spec && <div className="text-xs text-muted-foreground">{batch.spec}</div>}
                       </td>
-                      <td style={{ padding: '14px 16px', fontSize: 14, color: '#374151' }}>{batch.operator}</td>
-                      <td style={{ padding: '14px 16px', fontSize: 14, color: '#374151' }}>{batch.weight ? `${batch.weight}g` : '--'}</td>
-                      <td style={{ padding: '14px 16px', fontSize: 13, color: '#6b7280' }}>{prodTime}</td>
-                      <td style={{ padding: '14px 16px', fontSize: 13 }}>
-                        <span style={{ color: expired ? '#ef4444' : '#374151' }}>
+                      <td className="px-4 py-3.5 text-sm text-foreground">{batch.operator}</td>
+                      <td className="px-4 py-3.5 text-sm text-foreground">{batch.weight ? `${batch.weight}g` : '--'}</td>
+                      <td className="px-4 py-3.5 text-xs text-muted-foreground">{prodTime}</td>
+                      <td className="px-4 py-3.5 text-xs">
+                        <span className={expired ? 'text-destructive' : 'text-foreground'}>
                           {expired ? '⚠️ 已过期' : expTime}
                         </span>
                       </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <span style={{ background: cfg.bg, color: cfg.color, padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 5, width: 'fit-content' }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, display: 'inline-block' }} />
+                      <td className="px-4 py-3.5">
+                        <Badge variant={statusVariant(batch.status)} className="gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.dot }} />
                           {cfg.label}
-                        </span>
+                        </Badge>
                       </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button onClick={() => navigate(`/batches/${batch.id}`)} title="查看详情"
-                            style={tableActionBtn('#dbeafe', '#1d4ed8')}><Eye size={15} /></button>
-                          <button onClick={() => navigate(`/batches/${batch.id}?print=1`)} title="打印标签"
-                            style={tableActionBtn('#f3e8ff', '#7c3aed')}><Printer size={15} /></button>
-                          <button onClick={() => setDeleteConfirm(batch.id)} title="删除"
-                            style={tableActionBtn('#fee2e2', '#dc2626')}><Trash2 size={15} /></button>
+                      <td className="px-4 py-3.5">
+                        <div className="flex gap-1.5">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:bg-blue-50" onClick={() => navigate(`/batches/${batch.id}`)} title="查看详情"><Eye size={15} /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-purple-600 hover:bg-purple-50" onClick={() => navigate(`/batches/${batch.id}?print=1`)} title="打印标签"><Printer size={15} /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setDeleteConfirm(batch.id)} title="删除"><Trash2 size={15} /></Button>
                         </div>
                       </td>
                     </tr>
@@ -163,41 +162,32 @@ export default function BatchList() {
 
         {/* 分页 */}
         {totalPages > 1 && (
-          <div style={{ padding: '14px 20px', borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'center', gap: 8 }}>
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={pageBtn(page === 1)}>上一页</button>
+          <div className="px-5 py-3.5 border-t border-border flex justify-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>上一页</Button>
             {Array.from({ length: Math.min(7, totalPages) }, (_, i) => i + 1).map(p => (
-              <button key={p} onClick={() => setPage(p)} style={pageBtn(false, p === page)}>{p}</button>
+              <Button key={p} variant={p === page ? 'default' : 'outline'} size="sm" onClick={() => setPage(p)}>{p}</Button>
             ))}
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={pageBtn(page === totalPages)}>下一页</button>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>下一页</Button>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* 删除确认弹窗 */}
       {deleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', borderRadius: 16, padding: 28, maxWidth: 380, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ background: '#fee2e2', borderRadius: 10, padding: 10 }}><AlertCircle size={22} color="#dc2626" /></div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>确认删除</div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]">
+          <Card className="p-7 max-w-[380px] w-[90%] shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="rounded-xl p-2.5 bg-destructive/10"><AlertCircle size={22} className="text-destructive" /></div>
+              <div className="font-bold text-base text-foreground">确认删除</div>
             </div>
-            <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 24 }}>删除后数据无法恢复，包含的视频文件也将一并删除。</p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setDeleteConfirm(null)} style={{ flex: 1, padding: '10px', border: '1.5px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', fontSize: 14, background: 'white' }}>取消</button>
-              <button onClick={() => handleDelete(deleteConfirm)} style={{ flex: 1, padding: '10px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>确认删除</button>
+            <p className="text-sm text-muted-foreground mb-6">删除后数据无法恢复，包含的视频文件也将一并删除。</p>
+            <div className="flex gap-2.5">
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(null)}>取消</Button>
+              <Button variant="destructive" className="flex-1" onClick={() => handleDelete(deleteConfirm)}>确认删除</Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>
   );
 }
-
-const primaryBtnStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #16a34a, #22c55e)', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', fontWeight: 600, fontSize: 14, cursor: 'pointer' };
-const iconBtnStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', padding: '10px', border: '1.5px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', background: 'white', color: '#6b7280' };
-const tableActionBtn = (bg: string, color: string): React.CSSProperties => ({ background: bg, color, border: 'none', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' });
-const pageBtn = (disabled: boolean, active?: boolean): React.CSSProperties => ({
-  padding: '7px 13px', border: `1.5px solid ${active ? '#16a34a' : '#e5e7eb'}`, borderRadius: 8,
-  background: active ? '#16a34a' : 'white', color: active ? 'white' : disabled ? '#d1d5db' : '#374151',
-  cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 13
-});

@@ -8,6 +8,7 @@ import BatchDetail from './pages/BatchDetail';
 import PublicTrace from './pages/PublicTrace';
 import ProductSettings from './pages/ProductSettings';
 import QuickRecord from './pages/QuickRecord';
+import { cn } from './lib/utils';
 
 interface NavItem {
   to: string;
@@ -24,53 +25,44 @@ const navItems: NavItem[] = [
 
 function Sidebar() {
   return (
-    <aside style={{
-      width: 220, minHeight: '100vh', background: 'linear-gradient(180deg, #14532d 0%, #166534 100%)',
-      display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, zIndex: 100, boxShadow: '2px 0 12px rgba(0,0,0,0.15)'
-    }}>
-      <div style={{ padding: '28px 20px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ background: '#22c55e', borderRadius: 10, padding: 8, display: 'flex' }}>
-            <Leaf size={22} color="white" />
+    <aside className="w-[220px] min-h-screen bg-white flex flex-col fixed top-0 left-0 z-50 border-r border-[#d2d2d7]">
+      <div className="px-5 pt-6 pb-5 border-b border-[#e8e8ed]">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-[#1d1d1f] rounded-lg p-2 flex">
+            <Leaf size={20} className="text-white" />
           </div>
           <div>
-            <div style={{ color: 'white', fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>鲜果追溯</div>
-            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>Fresh Fruit Trace</div>
+            <div className="text-[#1d1d1f] font-semibold text-[15px] leading-tight tracking-tight">追溯系统</div>
+            <div className="text-[#6e6e73] text-[11px]">Trace System</div>
           </div>
         </div>
       </div>
-      <nav style={{ flex: 1, padding: '16px 12px' }}>
+      <nav className="flex-1 px-3 py-4">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
-            style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '11px 14px', borderRadius: 10, marginBottom: 4,
-              textDecoration: 'none', fontSize: 14, fontWeight: 500,
-              color: isActive ? 'white' : 'rgba(255,255,255,0.7)',
-              background: isActive ? 'rgba(255,255,255,0.15)' : 'transparent',
-              transition: 'all 0.15s',
-            })}
+            className={({ isActive }) => cn(
+              'flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg mb-1 text-sm font-medium transition-all duration-200',
+              isActive ? 'bg-[#f5f5f7] text-[#1d1d1f] font-semibold' : 'text-[#6e6e73] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
+            )}
           >
             <Icon size={18} />
             {label}
           </NavLink>
         ))}
       </nav>
-      <div style={{ padding: '12px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <NavLink to="/quick" style={({ isActive }) => ({
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '13px 14px', borderRadius: 12, textDecoration: 'none',
-          background: isActive ? '#22c55e' : 'rgba(34,197,94,0.2)',
-          color: 'white', fontWeight: 700, fontSize: 14,
-          border: '1.5px solid rgba(34,197,94,0.5)',
-          boxShadow: isActive ? '0 4px 12px rgba(34,197,94,0.4)' : 'none',
-        })}>
-          <Zap size={18} fill="currentColor" /> 员工快速操作
+      <div className="px-3 py-3 border-t border-[#e8e8ed]">
+        <NavLink to="/quick" className={({ isActive }) => cn(
+          'flex items-center gap-2.5 px-3.5 py-3 rounded-xl text-sm font-bold transition-all duration-200',
+          isActive
+            ? 'bg-[#1d1d1f] text-white'
+            : 'bg-[#f5f5f7] text-[#1d1d1f] border border-[#d2d2d7] hover:bg-[#ebebed]'
+        )}>
+          <Zap size={18} className={(({ isActive }: any) => isActive ? 'text-primary' : '') as any} fill="currentColor" /> 员工快速操作
         </NavLink>
-        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, textAlign: 'center', marginTop: 8 }}>v1.0.0 · 鲜切追溯系统</div>
+        <div className="text-[#6e6e73] text-[10px] text-center mt-2">v1.0.0 · 追溯系统</div>
       </div>
     </aside>
   );
@@ -78,9 +70,9 @@ function Sidebar() {
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex' }}>
+    <div className="flex">
       <Sidebar />
-      <main style={{ marginLeft: 220, flex: 1, minHeight: '100vh', background: '#f0fdf4' }}>
+      <main className="ml-[220px] flex-1 min-h-screen bg-background">
         {children}
       </main>
     </div>

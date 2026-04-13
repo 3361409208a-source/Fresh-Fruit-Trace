@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "axios": "^1.6.7",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "date-fns": "^3.3.1",
     "http-proxy-middleware": "^3.0.5",
     "lucide-react": "^0.344.0",
@@ -11,7 +13,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.1",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "tailwind-merge": "^3.5.0"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -38,7 +41,10 @@
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.27",
     "node-forge": "^1.4.0",
+    "postcss": "^8.5.9",
+    "tailwindcss": "^3.4.19",
     "typescript": "^6.0.2",
     "webpack-dev-server": "^4.15.0"
   }
