@@ -34,5 +34,12 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "http://localhost:3001"
+  "proxy": "http://localhost:3001",
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "node-forge": "^1.4.0",
+    "typescript": "^6.0.2",
+    "webpack-dev-server": "^4.15.0"
+  }
 }

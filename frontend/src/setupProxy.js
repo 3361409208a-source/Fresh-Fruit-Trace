@@ -6,8 +6,10 @@ module.exports = function(app) {
     createProxyMiddleware({
       target: 'http://localhost:3001',
       changeOrigin: true,
-      timeout: 600000,    // 10 min proxy timeout
+      pathRewrite: { '^/api': '/api' },
+      timeout: 600000,
       proxyTimeout: 600000,
+      logger: console,
       onError: (err, req, res) => {
         console.error('[Proxy Error]', err.message);
       },
