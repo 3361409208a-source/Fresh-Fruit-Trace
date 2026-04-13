@@ -39,6 +39,9 @@ router.get('/:id', (req: Request<{ id: string }>, res: Response) => {
         is_expired: isExpired,
         remaining_seconds: remainingSeconds,
         video_url: batch.video_url,
+        latitude: batch.latitude,
+        longitude: batch.longitude,
+        location_name: batch.location_name,
         product_type_name: pt ? pt.name : null,
         events,
         created_at: batch.created_at

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { CheckCircle, AlertCircle, Clock, Video, Package, Leaf, Activity, Play } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, Video, Package, Leaf, Activity, Play, MapPin } from 'lucide-react';
 import { getTrace, API_BASE_URL } from '../api';
 import type { TraceData } from '../types';
 
@@ -172,6 +172,35 @@ export default function PublicTrace() {
             </div>
           )}
         </div>
+
+        {/* 生产位置 */}
+        {data.location_name && (
+          <div style={cardStyle}>
+            <SectionTitle icon={MapPin} title="生产地点" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <MapPin size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <div style={{ fontSize: 14, color: '#111827', fontWeight: 600 }}>{data.location_name}</div>
+                  {data.latitude != null && data.longitude != null && (
+                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+                      {data.latitude.toFixed(6)}, {data.longitude.toFixed(6)}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {data.latitude != null && data.longitude != null && (
+                <iframe
+                  title="生产地点地图"
+                  width="100%"
+                  height="200"
+                  style={{ borderRadius: 12, border: '1px solid #e5e7eb' }}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${data.longitude-0.005},${data.latitude-0.003},${data.longitude+0.005},${data.latitude+0.003}&layer=mapnik&marker=${data.latitude},${data.longitude}`}
+                />
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 生产视频 */}
         {data.video_url && (

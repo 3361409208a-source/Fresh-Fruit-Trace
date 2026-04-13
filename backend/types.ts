@@ -22,6 +22,9 @@ export interface Batch {
   expire_at: number | null;
   video_path: string | null;
   video_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_name: string | null;
   created_at: number;
 }
 

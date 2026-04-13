@@ -85,7 +85,7 @@ router.get('/:id', (req: Request<{ id: string }>, res: Response) => {
 // 创建批次
 router.post('/', (req: Request, res: Response) => {
   try {
-    const { product_name, product_type_id, operator, weight, spec, notes } = req.body;
+    const { product_name, product_type_id, operator, weight, spec, notes, latitude, longitude, location_name } = req.body;
     if (!product_name || !operator) {
       return res.status(400).json({ success: false, message: '产品名称和操作员不能为空' });
     }
@@ -105,6 +105,9 @@ router.post('/', (req: Request, res: Response) => {
       expire_at: null,
       video_path: null,
       video_url: null,
+      latitude: latitude ?? null,
+      longitude: longitude ?? null,
+      location_name: location_name || null,
       created_at: now,
     };
     store.upsertBatch(batch);
@@ -123,7 +126,7 @@ router.put('/:id', (req: Request<{ id: string }>, res: Response) => {
     const batch = store.getBatchById(id);
     if (!batch) return res.status(404).json({ success: false, message: '批次不存在' });
 
-    const { status, weight, spec, notes, expire_at, production_time, product_name, operator } = req.body;
+    const { status, weight, spec, notes, expire_at, production_time, product_name, operator, latitude, longitude, location_name } = req.body;
     const now = Math.floor(Date.now() / 1000);
     const updated: Batch = { ...batch };
 
@@ -135,6 +138,9 @@ router.put('/:id', (req: Request<{ id: string }>, res: Response) => {
     if (production_time !== undefined) updated.production_time = production_time;
     if (product_name !== undefined) updated.product_name = product_name;
     if (operator !== undefined) updated.operator = operator;
+    if (latitude !== undefined) updated.latitude = latitude;
+    if (longitude !== undefined) updated.longitude = longitude;
+    if (location_name !== undefined) updated.location_name = location_name;
 
     if (status === 'recording') {
       updated.started_at = now;

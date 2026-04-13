@@ -7,11 +7,11 @@ const S = { IDLE: 'idle', RECORDING: 'recording', UPLOADING: 'uploading', DONE: 
 type Phase = typeof S[keyof typeof S];
 
 const SHELF_PRESETS = [
+  { h: 1,  label: '1小时' },
   { h: 6,  label: '6小时' },
   { h: 12, label: '12小时' },
   { h: 24, label: '1天' },
   { h: 48, label: '2天' },
-  { h: 72, label: '3天' },
 ];
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
@@ -24,9 +24,9 @@ interface MediaRecorderExt extends MediaRecorder {
 
 export default function QuickRecord() {
   const [phase, setPhase]         = useState<Phase>(S.IDLE);
-  const [operator, setOperator]   = useState(() => localStorage.getItem('qr_operator') || '');
+  const [operator, setOperator]   = useState(() => localStorage.getItem('qr_operator') || '操作员');
   const [editOp, setEditOp]       = useState(false);
-  const [shelfH, setShelfH]       = useState(24);
+  const [shelfH, setShelfH]       = useState(1);
   const [elapsed, setElapsed]     = useState(0);
   const [uploadPct, setUploadPct] = useState(0);
   const [batchId, setBatchId]     = useState<string | null>(null);
@@ -42,13 +42,10 @@ export default function QuickRecord() {
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const blobRef     = useRef<Blob | null>(null);
 
-  // 摄像头预览
+  // 摄像头预览（常开）
   useEffect(() => {
     let s: MediaStream | undefined;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setHasCam(false);
-      return;
-    }
+    if (!navigator.mediaDevices?.getUserMedia) { setHasCam(false); return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }, audio: true })
       .then(st => {
         s = st; setStream(st);
@@ -74,15 +71,45 @@ export default function QuickRecord() {
     setEditOp(false);
   };
 
+  // ── 获取定位 ──────────────────────────────────────────────────────────────
+  const getLocation = useCallback((): Promise<{ latitude: number; longitude: number; location_name: string } | null> => {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) { resolve(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          let location_name = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          try {
+            const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=zh`);
+            const data = await resp.json();
+            if (data.display_name) location_name = data.display_name.split(',').slice(0, 3).join(', ');
+          } catch {}
+          resolve({ latitude, longitude, location_name });
+        },
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+      );
+    });
+  }, []);
+
   // ── 开始 ──────────────────────────────────────────────────────────────────
   const handleStart = useCallback(async () => {
-    if (!operator.trim()) { setEditOp(true); return; }
+    if (!operator.trim()) { setOperator('操作员'); }
     setError('');
+    const opName = operator.trim() || '操作员';
     try {
-      const res = await createBatch({ product_name: '鲜切水果', operator: operator.trim() });
+      const res = await createBatch({
+        product_name: '鲜切水果',
+        operator: opName,
+      });
       const id = res.data!.id;
       setBatchId(id);
       await updateBatch(id, { status: 'recording' });
+
+      // 定位在后台异步获取，不阻塞流程
+      getLocation().then(loc => {
+        if (loc && id) updateBatch(id, { latitude: loc.latitude, longitude: loc.longitude, location_name: loc.location_name }).catch(() => {});
+      });
 
       const tracks = stream ? stream.getTracks() : [];
       if (tracks.length > 0 && stream) {
@@ -90,50 +117,26 @@ export default function QuickRecord() {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
         const MIME_TYPES = isIOS ? ['video/mp4', ''] : ['video/webm;codecs=vp9', 'video/webm', 'video/mp4', ''];
         const mime = MIME_TYPES.find(t => t === '' || MediaRecorder.isTypeSupported(t));
-        console.log('[DEBUG] iOS:', isIOS, 'Selected MIME:', mime);
-
         let mr: MediaRecorderExt;
-        try {
-          const mrOpts = mime ? { mimeType: mime } : {};
-          mr = new MediaRecorder(stream, mrOpts) as MediaRecorderExt;
-        } catch (e) {
-          console.log('[DEBUG] MediaRecorder init failed, trying without options:', e);
-          mr = new MediaRecorder(stream) as MediaRecorderExt;
-        }
-
-        mr.ondataavailable = e => {
-          if (e.data.size > 0) {
-            chunksRef.current.push(e.data);
-            console.log('[DEBUG] dataavailable chunk size:', e.data.size);
-          }
-        };
-
+        try { mr = new MediaRecorder(stream, mime ? { mimeType: mime } : {}) as MediaRecorderExt; }
+        catch { mr = new MediaRecorder(stream) as MediaRecorderExt; }
+        mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
         mrRef.current = mr;
         mrRef.current._stopPromise = new Promise(resolve => {
           mr.onstop = () => {
             const actualMime = mr.mimeType || 'video/mp4';
-            console.log('[DEBUG] onstop fired, chunks:', chunksRef.current.length, 'mimeType:', actualMime);
-
-            blobRef.current = new Blob(chunksRef.current, { type: actualMime });
-            console.log('[DEBUG] Blob created, size:', blobRef.current.size, 'type:', blobRef.current.type);
-
-            if (isIOS && actualMime.includes('mp4')) {
-              blobRef.current = new Blob(chunksRef.current, { type: 'video/mp4' });
-              console.log('[DEBUG] iOS blob recreated, new size:', blobRef.current.size);
-            }
+            blobRef.current = new Blob(chunksRef.current, { type: isIOS && actualMime.includes('mp4') ? 'video/mp4' : actualMime });
             resolve();
           };
         });
         mr.start(500);
       } else {
-        mrRef.current = null;
-        blobRef.current = null;
+        mrRef.current = null; blobRef.current = null;
       }
-
       setElapsed(0);
       setPhase(S.RECORDING);
     } catch (err) { setError('创建失败：' + (err as Error).message); }
-  }, [operator, stream]);
+  }, [operator, stream, getLocation]);
 
   // ── 停止并完成 ────────────────────────────────────────────────────────────
   const handleStop = useCallback(async () => {
@@ -217,31 +220,26 @@ export default function QuickRecord() {
 
       {/* ── 摄像头画面 ── */}
       <div style={styles.videoWrap} className="no-print">
-        <video
-          ref={videoRef}
-          autoPlay muted playsInline
-          style={{ ...styles.video, display: hasCam ? 'block' : 'none' }}
-        />
+        <video ref={videoRef} autoPlay muted playsInline
+          style={{ ...styles.video, display: hasCam ? 'block' : 'none' }} />
         {!hasCam && (
           <div style={styles.noCam}>
-            <span style={{ fontSize: 48 }}>📷</span>
-            <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>摄像头不可用，仍可记录时间</div>
+            <span style={{ fontSize: 32 }}>📷</span>
+            <div style={{ marginTop: 6, color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>摄像头不可用，仍可记录时间</div>
           </div>
         )}
-
         {phase === S.RECORDING && (
           <div style={styles.recOverlay}>
             <span style={styles.recDot} />
             <span style={styles.recTime}>{fmtTime(elapsed)}</span>
           </div>
         )}
-
-        {(phase === S.UPLOADING || (phase === S.DONE && uploadPct > 0 && uploadPct < 100)) && (
+        {uploadPct > 0 && uploadPct < 100 && (
           <div style={styles.uploadBarBottom}>
             <div style={styles.uploadBarTrack}>
               <div style={{ ...styles.uploadBarFill, width: `${uploadPct}%` }} />
             </div>
-            <span style={styles.uploadBarText}>{uploadPct < 100 ? `上传中 ${uploadPct}%` : '上传完成'}</span>
+            <span style={styles.uploadBarText}>上传中 {uploadPct}%</span>
           </div>
         )}
       </div>
@@ -365,94 +363,94 @@ const styles: Record<string, React.CSSProperties> = {
   },
   topBar: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '12px 20px', background: '#1a1d27',
+    padding: '8px 12px', background: '#1a1d27',
     borderBottom: '1px solid rgba(255,255,255,0.08)',
   },
-  logo: { color: 'white', fontWeight: 800, fontSize: 18, letterSpacing: '-0.5px' },
+  logo: { color: 'white', fontWeight: 800, fontSize: 15, letterSpacing: '-0.5px' },
   opBtn: {
     background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.8)',
-    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8,
-    padding: '8px 16px', fontSize: 14, cursor: 'pointer',
+    border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+    padding: '5px 10px', fontSize: 12, cursor: 'pointer',
   },
   opInput: {
     background: '#2a2d3a', color: 'white', border: '1.5px solid #22c55e',
-    borderRadius: 8, padding: '8px 14px', fontSize: 14, outline: 'none', width: 160,
+    borderRadius: 6, padding: '5px 10px', fontSize: 13, outline: 'none', width: 120,
   },
-  opSave: { background: '#22c55e', color: 'white', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontWeight: 700 },
-  opCancel: { background: '#374151', color: 'white', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' },
+  opSave: { background: '#22c55e', color: 'white', border: 'none', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontWeight: 700, fontSize: 13 },
+  opCancel: { background: '#374151', color: 'white', border: 'none', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontSize: 13 },
 
   videoWrap: {
-    flex: 1, position: 'relative', background: '#000', minHeight: 240,
+    flex: 1, position: 'relative', background: '#000', minHeight: 180,
     overflow: 'hidden',
   },
   video: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   noCam: {
-    width: '100%', height: '100%', minHeight: 240,
+    width: '100%', height: '100%', minHeight: 180,
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     background: '#1a1d27',
   },
   recOverlay: {
-    position: 'absolute', top: 16, left: 16,
-    display: 'flex', alignItems: 'center', gap: 8,
-    background: 'rgba(0,0,0,0.65)', borderRadius: 20, padding: '6px 16px',
+    position: 'absolute', top: 8, left: 8,
+    display: 'flex', alignItems: 'center', gap: 6,
+    background: 'rgba(0,0,0,0.65)', borderRadius: 14, padding: '4px 10px',
     backdropFilter: 'blur(4px)',
   },
   recDot: {
-    width: 12, height: 12, borderRadius: '50%', background: '#ef4444',
+    width: 8, height: 8, borderRadius: '50%', background: '#ef4444',
     display: 'inline-block', animation: 'pulse 1s infinite',
   },
-  recTime: { color: 'white', fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
+  recTime: { color: 'white', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
   uploadBarBottom: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
-    padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12,
+    padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8,
   },
-  uploadBarTrack: { flex: 1, height: 6, background: 'rgba(255,255,255,0.2)', borderRadius: 10, overflow: 'hidden' },
-  uploadBarFill: { height: '100%', background: '#22c55e', borderRadius: 10, transition: 'width 0.3s' },
-  uploadBarText: { color: 'white', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' },
+  uploadBarTrack: { flex: 1, height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 8, overflow: 'hidden' },
+  uploadBarFill: { height: '100%', background: '#22c55e', borderRadius: 8, transition: 'width 0.3s' },
+  uploadBarText: { color: 'white', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' },
 
   controls: {
-    background: '#1a1d27', padding: '20px 20px 28px',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+    background: '#1a1d27', padding: '12px 12px 16px',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
   },
   errorBox: {
-    background: '#450a0a', border: '1px solid #dc2626', borderRadius: 10,
-    color: '#fca5a5', padding: '10px 16px', fontSize: 14, width: '100%', maxWidth: 480, textAlign: 'center',
+    background: '#450a0a', border: '1px solid #dc2626', borderRadius: 8,
+    color: '#fca5a5', padding: '8px 12px', fontSize: 12, width: '100%', textAlign: 'center',
   },
-  shelfRow: { display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' },
+  shelfRow: { display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' },
   shelfBtn: {
-    padding: '10px 18px', borderRadius: 12,
+    padding: '6px 12px', borderRadius: 8,
     border: '1.5px solid rgba(255,255,255,0.15)',
     background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)',
-    fontSize: 15, cursor: 'pointer', fontWeight: 500,
+    fontSize: 13, cursor: 'pointer', fontWeight: 500,
   },
   shelfBtnActive: {
     border: '1.5px solid #22c55e', background: 'rgba(34,197,94,0.15)',
     color: '#4ade80', fontWeight: 700,
   },
   bigGreen: {
-    width: '100%', maxWidth: 480, padding: '22px 0', fontSize: 26, fontWeight: 800,
+    width: '100%', padding: '16px 0', fontSize: 20, fontWeight: 800,
     background: 'linear-gradient(135deg, #16a34a, #22c55e)',
-    color: 'white', border: 'none', borderRadius: 18, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-    boxShadow: '0 8px 32px rgba(22,163,74,0.45)', letterSpacing: '-0.5px',
+    color: 'white', border: 'none', borderRadius: 14, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    boxShadow: '0 6px 24px rgba(22,163,74,0.45)', letterSpacing: '-0.5px',
   },
   bigRed: {
-    width: '100%', maxWidth: 480, padding: '22px 0', fontSize: 26, fontWeight: 800,
+    width: '100%', padding: '16px 0', fontSize: 20, fontWeight: 800,
     background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-    color: 'white', border: 'none', borderRadius: 18, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-    boxShadow: '0 8px 32px rgba(239,68,68,0.45)', letterSpacing: '-0.5px',
+    color: 'white', border: 'none', borderRadius: 14, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+    boxShadow: '0 6px 24px rgba(239,68,68,0.45)', letterSpacing: '-0.5px',
   },
-  bigIcon: { fontSize: 28 },
+  bigIcon: { fontSize: 22 },
 
   donePanel: {
-    width: '100%', maxWidth: 480,
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+    width: '100%',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
   },
   doneTop: { textAlign: 'center' },
-  doneTxt: { color: '#4ade80', fontWeight: 800, fontSize: 26, marginTop: 4 },
-  doneExp: { color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 4 },
+  doneTxt: { color: '#4ade80', fontWeight: 800, fontSize: 20, marginTop: 2 },
+  doneExp: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 },
 
   printArea: { position: 'absolute', left: '-9999px', top: 0, visibility: 'hidden' },
 };

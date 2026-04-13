@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { ArrowLeft, Printer, CheckCircle, Clock, Video, AlertCircle, Package, Calendar, User, Weight, FileText, Activity } from 'lucide-react';
+import { ArrowLeft, Printer, CheckCircle, Clock, Video, AlertCircle, Package, Calendar, User, Weight, FileText, Activity, MapPin } from 'lucide-react';
 import { getBatch, updateBatch, API_BASE_URL } from '../api';
 import type { Batch, StatusConfig } from '../types';
 
@@ -116,6 +116,7 @@ export default function BatchDetail() {
               <InfoItem icon={Package} label="规格" value={batch.spec || '未填写'} />
               <InfoItem icon={Calendar} label="生产时间" value={prodTime} />
               <InfoItem icon={Clock} label="有效期至" value={expTime} highlight={isExpired ? 'red' : batch.expire_at ? 'green' : undefined} />
+              {batch.location_name && <InfoItem icon={MapPin} label="生产地点" value={batch.location_name} />}
               <InfoItem icon={Calendar} label="创建时间" value={createdTime} />
             </div>
             {batch.notes && (
@@ -228,6 +229,7 @@ function PrintLabel({ batch, traceUrl, isExpired }: PrintLabelProps) {
           <LabelRow label="操作员" value={batch.operator} />
           <LabelRow label="生产时间" value={prodTime} />
           <LabelRow label="有效期至" value={expTime} highlight={isExpired} />
+          {batch.location_name && <LabelRow label="地点" value={batch.location_name} />}
           {batch.notes && <LabelRow label="备注" value={batch.notes} />}
           <div style={{ marginTop: 10, fontSize: 10, color: '#9ca3af' }}>批次: {batch.id.slice(0, 8).toUpperCase()}</div>
         </div>

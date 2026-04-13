@@ -25,6 +25,9 @@ export interface Batch {
   expire_at: number | null;
   video_path: string | null;
   video_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_name: string | null;
   created_at: number;
   default_shelf_hours?: number | null;
   events?: TraceEvent[];
@@ -55,6 +58,9 @@ export interface TraceData {
   is_expired: boolean;
   remaining_seconds: number | null;
   video_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_name: string | null;
   product_type_name: string | null;
   events: Pick<TraceEvent, 'event_type' | 'description' | 'occurred_at'>[];
   created_at: number;
@@ -105,6 +111,9 @@ export interface CreateBatchParams {
   weight?: number | null;
   spec?: string;
   notes?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_name?: string | null;
 }
 
 // ── 更新批次参数 ────────────────────────────────────────────────────────────
@@ -117,6 +126,9 @@ export interface UpdateBatchParams {
   production_time?: number | null;
   product_name?: string;
   operator?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  location_name?: string | null;
 }
 
 // ── 创建产品参数 ────────────────────────────────────────────────────────────
