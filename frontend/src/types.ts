@@ -1,6 +1,49 @@
+// ── 企业 ──────────────────────────────────────────────────────────────────────
+export interface Enterprise {
+  id: number;
+  name: string;
+  code: string;
+  contact_person: string | null;
+  contact_phone: string | null;
+  address: string | null;
+  license_no: string | null;
+  logo_url: string | null;
+  status: number;
+  created_at: number;
+  updated_at: number;
+}
+
+// ── 用户角色 ─────────────────────────────────────────────────────────────────
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'operator';
+
+// ── 用户 ──────────────────────────────────────────────────────────────────────
+export interface User {
+  id: number;
+  enterprise_id: number;
+  username: string;
+  real_name: string | null;
+  phone: string | null;
+  role: UserRole;
+  status: number;
+  last_login_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+// ── 登录用户信息 ─────────────────────────────────────────────────────────────
+export interface AuthUser {
+  id: number;
+  username: string;
+  real_name: string | null;
+  phone: string | null;
+  role: UserRole;
+  enterprise_id: number;
+}
+
 // ── 产品类型 ────────────────────────────────────────────────────────────────
 export interface Product {
   id: number;
+  enterprise_id: number;
   name: string;
   default_shelf_hours: number;
   created_at: number;
