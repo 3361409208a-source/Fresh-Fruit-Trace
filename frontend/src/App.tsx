@@ -10,6 +10,7 @@ import PublicTrace from './pages/PublicTrace';
 import ProductSettings from './pages/ProductSettings';
 import QuickRecord from './pages/QuickRecord';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 import EnterpriseManagement from './pages/EnterpriseManagement';
 import UserManagement from './pages/UserManagement';
 import { cn } from './lib/utils';
@@ -172,6 +173,11 @@ function AppRoutes() {
         <Route path="/quick" element={<QuickRecord />} />
       </Routes>
     );
+  }
+
+  // 如果未登录且访问根目录，显示官网
+  if (location.pathname === '/' && !isAuthenticated && !isLoading) {
+    return <Landing />;
   }
 
   // 主布局页面 - 需要认证
