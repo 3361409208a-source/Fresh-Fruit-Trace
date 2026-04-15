@@ -69,7 +69,14 @@ router.post('/login', async (req: Request, res: Response) => {
     } else {
       // 没有提供企业编码，尝试直接通过用户名登录（仅超级管理员允许）
       user = await dbWrapper.getUserWithPasswordByUsername(username.trim());
-      if (user) {
+      // Fallback to memory user if MySQL has no users yet
+      if (!user && !useMemory) {
+        user = memoryUsers.find(u => u.username === username.trim()) || null;
+        if (user) {
+          enterprise = memoryEnterprises.find(e => e.id === user.enterprise_id) || null;
+        }
+      }
+      if (user && !enterprise) {
         enterprise = await dbWrapper.getEnterpriseById(user.enterprise_id);
       }
     }
@@ -134,7 +141,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     // 检查企业编码是否已存在
     const enterprises = await db.getEnterprises();
-    if (enterprises.find((e) => e.code === enterprise_code.trim())) {
+    if (enterprises.find((e: any) => e.code === enterprise_code.trim())) {
       return res.status(409).json({ success: false, message: '该企业编码已被使用' });
     }
 
