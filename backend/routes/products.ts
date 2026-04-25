@@ -1,12 +1,14 @@
 import express, { Request, Response } from 'express';
 import store from '../db';
+import { authMiddleware } from '../middleware/auth';
 
 const router = express.Router();
 
-// 获取所有产品类型
-router.get('/', (_req: Request, res: Response) => {
+// 获取所有产品类型（租户隔离）
+router.get('/', authMiddleware, async (_req: Request, res: Response) => {
   try {
-    const types = store.getProducts().sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+    const tenantId = _req.user!.tenantId;
+    const types = await store.getProducts(tenantId);
     res.json({ success: true, data: types });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -15,18 +17,16 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 // 添加产品类型
-router.post('/', (req: Request, res: Response) => {
+router.post('/', authMiddleware, async (req: Request, res: Response) => {
   try {
+    const tenantId = req.user!.tenantId;
     const { name, default_shelf_hours } = req.body;
     if (!name) return res.status(400).json({ success: false, message: '产品名称不能为空' });
-    const list = store.getProducts();
+    const list = await store.getProducts(tenantId);
     if (list.find(p => p.name === name.trim())) {
       return res.status(409).json({ success: false, message: '该产品类型已存在' });
     }
-    const newId = list.length > 0 ? Math.max(...list.map(p => p.id)) + 1 : 1;
-    const created = { id: newId, name: name.trim(), default_shelf_hours: default_shelf_hours || 24, created_at: Math.floor(Date.now() / 1000) };
-    list.push(created);
-    store.saveProducts(list);
+    const created = await store.createProduct(tenantId, name.trim(), default_shelf_hours || 24);
     res.json({ success: true, data: created });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -35,15 +35,13 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // 更新产品类型
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
+    const tenantId = req.user!.tenantId;
     const { name, default_shelf_hours } = req.body;
-    const list = store.getProducts();
-    const idx = list.findIndex(p => String(p.id) === req.params.id);
-    if (idx < 0) return res.status(404).json({ success: false, message: '未找到该产品类型' });
-    list[idx] = { ...list[idx], name, default_shelf_hours };
-    store.saveProducts(list);
-    res.json({ success: true, data: list[idx] });
+    const updated = await store.updateProduct(tenantId, parseInt(String(req.params.id)), name, default_shelf_hours);
+    if (!updated) return res.status(404).json({ success: false, message: '未找到该产品类型' });
+    res.json({ success: true, data: updated });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ success: false, message: msg });
@@ -51,10 +49,11 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // 删除产品类型
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const list = store.getProducts().filter(p => String(p.id) !== req.params.id);
-    store.saveProducts(list);
+    const tenantId = req.user!.tenantId;
+    const ok = await store.deleteProduct(tenantId, parseInt(String(req.params.id)));
+    if (!ok) return res.status(404).json({ success: false, message: '未找到该产品类型' });
     res.json({ success: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

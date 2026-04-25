@@ -9,6 +9,9 @@ import type {
   CreateProductParams,
   TodayStats,
   TraceData,
+  AuthData,
+  RegisterParams,
+  LoginParams,
 } from './types';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
@@ -18,13 +21,56 @@ const api = axios.create({
   timeout: 60000,
 });
 
+// 请求拦截器：自动附加 JWT token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (res) => res.data,
   (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('authData');
+      window.location.href = '/login';
+    }
     const msg = err.response?.data?.message || err.message || '请求失败';
     return Promise.reject(new Error(msg));
   }
 );
+
+// ── 认证 API ────────────────────────────────────────────────────────────
+export const register = (data: RegisterParams) => api.post<any, ApiResponse<AuthData>>('/auth/register', data);
+export const login = (data: LoginParams) => api.post<any, ApiResponse<AuthData>>('/auth/login', data);
+export const getMe = () => api.get<any, ApiResponse<{ user: AuthData['user']; tenant: AuthData['tenant'] }>>('/auth/me');
+
+export function saveAuthData(data: AuthData): void {
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('authData', JSON.stringify(data));
+}
+
+export function getAuthData(): AuthData | null {
+  const raw = localStorage.getItem('authData');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuthData;
+  } catch {
+    return null;
+  }
+}
+
+export function clearAuthData(): void {
+  localStorage.removeItem('token');
+  localStorage.removeItem('authData');
+}
+
+export function isLoggedIn(): boolean {
+  return !!localStorage.getItem('token');
+}
 
 // 产品类型
 export const getProducts = () => api.get<any, ApiResponse<Product[]>>('/products');

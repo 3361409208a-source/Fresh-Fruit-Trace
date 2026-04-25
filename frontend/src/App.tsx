@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ListOrdered, PlusCircle, Settings, Leaf, Zap } from 'lucide-react';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, ListOrdered, PlusCircle, Settings, Leaf, Zap, LogOut } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import BatchCreate from './pages/BatchCreate';
 import BatchList from './pages/BatchList';
@@ -8,7 +8,9 @@ import BatchDetail from './pages/BatchDetail';
 import PublicTrace from './pages/PublicTrace';
 import ProductSettings from './pages/ProductSettings';
 import QuickRecord from './pages/QuickRecord';
+import Login from './pages/Login';
 import { cn } from './lib/utils';
+import { getAuthData, clearAuthData, isLoggedIn } from './api';
 
 interface NavItem {
   to: string;
@@ -24,6 +26,14 @@ const navItems: NavItem[] = [
 ];
 
 function Sidebar() {
+  const navigate = useNavigate();
+  const authData = getAuthData();
+
+  function handleLogout() {
+    clearAuthData();
+    navigate('/login');
+  }
+
   return (
     <aside className="w-[220px] min-h-screen bg-white flex flex-col fixed top-0 left-0 z-50 border-r border-[#d2d2d7]">
       <div className="px-5 pt-6 pb-5 border-b border-[#e8e8ed]">
@@ -32,7 +42,9 @@ function Sidebar() {
             <Leaf size={20} className="text-white" />
           </div>
           <div>
-            <div className="text-[#1d1d1f] font-semibold text-[15px] leading-tight tracking-tight">追溯系统</div>
+            <div className="text-[#1d1d1f] font-semibold text-[15px] leading-tight tracking-tight">
+              {authData?.tenant?.name || '追溯系统'}
+            </div>
             <div className="text-[#6e6e73] text-[11px]">Trace System</div>
           </div>
         </div>
@@ -62,7 +74,15 @@ function Sidebar() {
         )}>
           <Zap size={18} className={(({ isActive }: any) => isActive ? 'text-primary' : '') as any} fill="currentColor" /> 员工快速操作
         </NavLink>
-        <div className="text-[#6e6e73] text-[10px] text-center mt-2">v1.0.0 · 追溯系统</div>
+        {authData && (
+          <div className="flex items-center justify-between mt-3 px-1">
+            <span className="text-xs text-[#6e6e73] truncate">{authData.user.display_name || authData.user.username}</span>
+            <button onClick={handleLogout} className="text-[#6e6e73] hover:text-[#1d1d1f] transition-colors" title="退出登录">
+              <LogOut size={14} />
+            </button>
+          </div>
+        )}
+        <div className="text-[#6e6e73] text-[10px] text-center mt-2">v2.0.0 · SaaS版</div>
       </div>
     </aside>
   );
@@ -79,10 +99,18 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  if (!isLoggedIn()) {
+    return <Login />;
+  }
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const location = useLocation();
   const isPublic = location.pathname.startsWith('/trace/');
   const isQuick  = location.pathname === '/quick';
+  const isLogin  = location.pathname === '/login';
 
   if (isPublic) {
     return (
@@ -100,17 +128,27 @@ function AppRoutes() {
     );
   }
 
-  return (
-    <MainLayout>
+  if (isLogin) {
+    return (
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/batches" element={<BatchList />} />
-        <Route path="/batches/new" element={<BatchCreate />} />
-        <Route path="/batches/:id" element={<BatchDetail />} />
-        <Route path="/settings" element={<ProductSettings />} />
-        <Route path="/quick" element={<QuickRecord />} />
+        <Route path="/login" element={<Login />} />
       </Routes>
-    </MainLayout>
+    );
+  }
+
+  return (
+    <RequireAuth>
+      <MainLayout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/batches" element={<BatchList />} />
+          <Route path="/batches/new" element={<BatchCreate />} />
+          <Route path="/batches/:id" element={<BatchDetail />} />
+          <Route path="/settings" element={<ProductSettings />} />
+          <Route path="/quick" element={<QuickRecord />} />
+        </Routes>
+      </MainLayout>
+    </RequireAuth>
   );
 }
 

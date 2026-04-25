@@ -1,3 +1,36 @@
+// ── 用户与认证 ────────────────────────────────────────────────────────────
+export interface AuthUser {
+  id: string;
+  username: string;
+  role: 'admin' | 'operator';
+  display_name: string;
+}
+
+export interface AuthTenant {
+  id: string;
+  name: string;
+}
+
+export interface AuthData {
+  token: string;
+  user: AuthUser;
+  tenant: AuthTenant;
+}
+
+export interface RegisterParams {
+  company_name: string;
+  contact_name?: string;
+  contact_phone?: string;
+  username: string;
+  password: string;
+  display_name?: string;
+}
+
+export interface LoginParams {
+  username: string;
+  password: string;
+}
+
 // ── 产品类型 ────────────────────────────────────────────────────────────────
 export interface Product {
   id: number;

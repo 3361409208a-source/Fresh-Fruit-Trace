@@ -4,17 +4,17 @@ import store from '../db';
 const router = express.Router();
 
 // 公开溯源接口 - 消费者扫码访问，无需登录
-router.get('/:id', (req: Request<{ id: string }>, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const batch = store.getBatchById(id);
+    const id = String(req.params.id);
+    const batch = await store.getBatchByIdPublic(id);
     if (!batch) {
       return res.status(404).json({ success: false, message: '未找到该产品信息，请确认二维码是否正确' });
     }
 
-    const products = store.getProducts();
+    const products = await store.getProducts(batch.tenant_id);
     const pt = products.find(p => p.id === batch.product_type_id);
-    const events = store.getEventsByBatch(id).map(e => ({
+    const events = (await store.getEventsByBatchPublic(id)).map(e => ({
       event_type: e.event_type, description: e.description, occurred_at: e.occurred_at
     }));
 

@@ -217,20 +217,6 @@
     "occurred_at": 1776077386
   },
   {
-    "id": 1776077392761.2122,
-    "batch_id": "8543b3a2-3a78-4cd2-8f89-3fa1eabf3490",
-    "event_type": "created",
-    "description": "批次创建：鲜切水果 - 操作员：操作员",
-    "occurred_at": 1776077392
-  },
-  {
-    "id": 1776077392783.1208,
-    "batch_id": "8543b3a2-3a78-4cd2-8f89-3fa1eabf3490",
-    "event_type": "recording_started",
-    "description": "开始录制生产过程",
-    "occurred_at": 1776077392
-  },
-  {
     "id": 1776077826711.9753,
     "batch_id": "0d3f159f-86c5-4396-a9d8-11dfbef00abc",
     "event_type": "created",

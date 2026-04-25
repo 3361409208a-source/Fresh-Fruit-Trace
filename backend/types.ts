@@ -1,5 +1,26 @@
+export interface Tenant {
+  id: string;
+  name: string;
+  contact_name: string;
+  contact_phone: string;
+  created_at: number;
+}
+
+export type UserRole = 'admin' | 'operator';
+
+export interface User {
+  id: string;
+  tenant_id: string;
+  username: string;
+  password_hash: string;
+  role: UserRole;
+  display_name: string;
+  created_at: number;
+}
+
 export interface Product {
   id: number;
+  tenant_id: string;
   name: string;
   default_shelf_hours: number;
   created_at: number;
@@ -9,6 +30,7 @@ export type BatchStatus = 'preparing' | 'recording' | 'done' | 'printed';
 
 export interface Batch {
   id: string;
+  tenant_id: string;
   product_name: string;
   product_type_id: number | null;
   operator: string;
@@ -30,6 +52,7 @@ export interface Batch {
 
 export interface TraceEvent {
   id: number;
+  tenant_id: string;
   batch_id: string;
   event_type: string;
   description: string;

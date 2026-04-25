@@ -3,6 +3,8 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 
+import store from './db';
+import authRouter from './routes/auth';
 import productsRouter from './routes/products';
 import batchesRouter from './routes/batches';
 import traceRouter from './routes/trace';
@@ -25,9 +27,11 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(uploadsDir));
 
 // API 路由 (同时支持 /api/xxx 和 /xxx，兼容代理 strip 前缀的情况)
+app.use('/api/auth', authRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/batches', batchesRouter);
 app.use('/api/trace', traceRouter);
+app.use('/auth', authRouter);
 app.use('/products', productsRouter);
 app.use('/batches', batchesRouter);
 app.use('/trace', traceRouter);
@@ -40,18 +44,32 @@ app.get('/health', (_req, res) => {
   res.json({ success: true, message: '鲜切水果追溯系统后端运行正常', timestamp: Date.now() });
 });
 
-// 启动服务器
-app.listen(PORT, () => {
-  console.log(`✅ 后端服务已启动: http://localhost:${PORT}`);
-  console.log(`📦 API文档:`);
-  console.log(`   GET  /api/health         - 健康检查`);
-  console.log(`   GET  /api/products       - 产品类型列表`);
-  console.log(`   POST /api/products       - 添加产品类型`);
-  console.log(`   GET  /api/batches        - 批次列表`);
-  console.log(`   POST /api/batches        - 创建批次`);
-  console.log(`   PUT  /api/batches/:id    - 更新批次`);
-  console.log(`   POST /api/batches/:id/video - 上传视频`);
-  console.log(`   GET  /api/trace/:id      - 公开溯源查询`);
-});
+// 启动服务器（异步初始化数据库）
+async function startServer(): Promise<void> {
+  try {
+    await store.initDB();
+    console.log('✅ 数据库初始化成功');
+  } catch (err) {
+    console.error('❌ 数据库初始化失败:', err);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`✅ 后端服务已启动: http://localhost:${PORT}`);
+    console.log(`📦 API文档:`);
+    console.log(`   GET  /api/health            - 健康检查`);
+    console.log(`   POST /api/auth/register     - 企业注册`);
+    console.log(`   POST /api/auth/login        - 用户登录`);
+    console.log(`   GET  /api/auth/me           - 当前用户信息`);
+    console.log(`   GET  /api/products          - 产品类型列表`);
+    console.log(`   POST /api/products          - 添加产品类型`);
+    console.log(`   GET  /api/batches           - 批次列表`);
+    console.log(`   POST /api/batches           - 创建批次`);
+    console.log(`   PUT  /api/batches/:id       - 更新批次`);
+    console.log(`   POST /api/batches/:id/video - 上传视频`);
+    console.log(`   GET  /api/trace/:id         - 公开溯源查询`);
+  });
+}
+
+startServer();
 
 export default app;
